@@ -285,6 +285,11 @@ NODE_TOP="$(echo $(find_top_node))"
 MAILU_VERSiON=1.7
 
 BATCHED_IMAGES="\
+library/elasticsearch/7.10.1\
+ library/elasticsearch/7.11.2\
+ library/elasticsearch/7.12.1\
+ library/elasticsearch/7.13.4\
+ library/elasticsearch/7.14.2::15
 library/elasticsearch/5\
  library/elasticsearch/1-alpine\
  library/elasticsearch/2-alpine\

@@ -65,6 +65,7 @@ jobs:
       fail-fast: false
       matrix:
         IMAGES:
+        - "library/elasticsearch/7.10.1 library/elasticsearch/7.11.2 library/elasticsearch/7.12.1 library/elasticsearch/7.13.4 library/elasticsearch/7.14.2"
         - "library/elasticsearch/5 library/elasticsearch/1-alpine library/elasticsearch/2-alpine library/elasticsearch/1 library/elasticsearch/5-alpine library/elasticsearch/2"
         #- "corpusops/test/a corpusops/test/b corpusops/test/c"
         # all images that werent explicitly told to be built would be built in the next batches
