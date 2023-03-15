@@ -255,10 +255,7 @@ IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(mini
 
 
 
-SKIP_MINOR_ES="((elasticsearch):([0-5]\.?){3}(-32bit.*)?)"
-SKIP_MINOR_ES="$SKIP_MINOR_ES|(elasticsearch:(5\.[0-4]\.)|(6\.8\.[0-8])|(6\.[0-7]))"
-SKIP_MINOR_ES="$SKIP_MINOR_ES|(elasticsearch:(7\.9\.[0-2]|7\.[0-8]\.))"
-SKIP_MINOR_ES="$SKIP_MINOR_ES|:1\.[3-7]"
+SKIP_MINOR_ES="elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|5\.[1-5]\.|1\.[3-7])"
 SKIPPED_TAGS="$SKIP_MINOR_ES"
 
 default_images="
@@ -285,16 +282,9 @@ NODE_TOP="$(echo $(find_top_node))"
 MAILU_VERSiON=1.7
 
 BATCHED_IMAGES="\
-library/elasticsearch/7.10.1\
- library/elasticsearch/7.11.2\
- library/elasticsearch/7.12.1\
- library/elasticsearch/7.13.4\
- library/elasticsearch/7.14.2::15
+library/elasticsearch/7.14.2::15
 library/elasticsearch/5\
- library/elasticsearch/1-alpine\
- library/elasticsearch/2-alpine\
  library/elasticsearch/1\
- library/elasticsearch/5-alpine\
  library/elasticsearch/2::7
 "
 SKIP_REFRESH_ANCESTORS=${SKIP_REFRESH_ANCESTORS-}
@@ -513,6 +503,10 @@ do_get_namespace_tag() {
             # ubuntu-bare / postgis
             if [ -e $i/tag ];then tag=$( cat $i/tag );break;fi
         done
+        for i in $image $image/.. $image/../../..;do
+            # ubuntu-bare / postgis
+            if [ -e $i/version ];then version=$( cat $i/version );break;fi
+        done
         echo "$repo/$tag:$version" \
             | sed -re "s/(-?(server)?-(web-vault|postgresql|mysql)):/-server:\3-/g"
     done
@@ -541,13 +535,31 @@ get_image_tags() {
             if [[ -n "${result}" ]];then results="${results} ${result}";else has_more=256;fi
         done
         if [ ! -e "$TOPDIR/$n" ];then mkdir -p "$TOPDIR/$n";fi
-        printf "$results\n" | sort -V > "$t.raw"
+        printf "$results\n" | xargs -n 1 | sort -V > "$t.raw"
+    fi
+    # cleanup elastic minor images (keep latest)
+    ONE_MINOR="elasticsearch"
+    if ( echo $t | egrep -q "$ONE_MINOR" );then
+        atags="$(cat $t.raw)"
+        for ix in $(seq 0 15);do
+            for j in $(seq 0 30);do
+                mv="$(  (( echo "$atags" | egrep "$ix\.$j\." | grep -v alpine ) || true )|sort -V )"
+                amv="$( (( echo "$atags" | egrep "$ix\.$j\." | grep    alpine ) || true )|sort -V )"
+                for selected in "$mv" "$amv";do
+                    if [[ -n "$selected" ]];then
+                        for l in $(echo "$selected"|sed -e "$ d");do
+                            SKIPPED_TAGS="$SKIPPED_TAGS|${ONE_MINOR}:$l$"
+                        done
+                    fi
+                done
+            done
+        done
     fi
     if [[ -z ${SKIP_TAGS_REBUILD} ]];then
     rm -f "$t"
-    ( for i in $(cat "$t.raw");do
+    ( for j in $(cat "$t.raw");do for i in $j;do
         if is_skipped "$n:$i";then debug "Skipped: $n:$i";else printf "$i\n";fi
-      done | awk '!seen[$0]++' | sort -V ) >> "$t"
+      done;done | awk '!seen[$0]++' | sort -V ) >> "$t"
     fi
     set -e
     if [ -e "$t" ];then cat "$t";fi

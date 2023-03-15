@@ -1,4 +1,4 @@
-FROM library/elasticsearch:7.12.0
+FROM library/elasticsearch:6.4.3
 ARG DO_UPDATE=y
 ARG NONINTERACTIVE=y
 ARG INSTALL_DEFAULT_LOCALE="fr_FR.UTF-8"
