@@ -11,6 +11,7 @@ ARG DOCKERIZE_RELEASE=latest
 ARG CURL_SSL_OPTS=--tlsv1
 ARG DOCKER_IMAGES_COMMIT=master
 ARG COPS_HELPERS=/cops_helpers
+USER root
 ADD \
     helpers/up.sh \
     helpers/add_gosu.sh \
@@ -94,3 +95,4 @@ RUN sh -c 'set -ex \
     && ./common_clean.sh \
     && cd / && rm -rf /tmp/corpusopssteroids /var/cache/apk/* /var/lib/apt/lists/*'
 LABEL com.github.corpusops.docker-images-commit="$DOCKER_IMAGES_COMMIT"
+USER elasticsearch:root

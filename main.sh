@@ -465,6 +465,10 @@ gen_image() {
         debug "Using dockerfiles: $dockerfiles from $_cops_IMG"
     fi
     cat $dockerfiles | envsubst '$_cops_BASE;$_cops_VERSION;' > Dockerfile
+    MV="${_cops_VERSION//.*/}"
+    if [ $MV -ge 8 ];then
+        echo "USER elasticsearch:root" >> Dockerfile
+    fi
     cd - &>/dev/null
 }
 ### end - docker remote api
