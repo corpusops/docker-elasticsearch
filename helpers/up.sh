@@ -21,6 +21,7 @@ DISTRIB_RELEASE=
 oldubuntu="^(10\.|12\.|13\.|14\.|15\.|16\.|17\.|18\.10|19\.|20\.10|21\.)"
 # oldubuntu="^(10\.|12\.|13\.|14.10|15\.|16.10|17\.04)"
 NOSOCAT=""
+CENTOS_OLDSTABLE=8
 OAPTMIRROR="${OAPTMIRROR:-}"
 OYUMMIRROR="${OYUMMIRROR:-}"
 NYUMMIRROR="${NYUMMIRROR:-}"
@@ -62,8 +63,6 @@ if [ "x${DISTRIB_ID}" = "xcentos" ] && ( echo  "${DISTRIB_MAJOR}" | grep -Eq "^(
 fi
 if ( echo $DISTRIB_ID | grep -E -iq "centos|red|fedora" );then
     if (echo $DISTRIB_ID|grep -E -iq centos);then
-        set -x
-        CENTOS_OLDSTABLE=8
         if [ "$DISTRIB_RELEASE" = "7" ];then
             OCENTOSMIRROR="${OCENTOSMIRROR:-mirror.centos.org}"
             NCENTOSMIRROR="${NCENTOSMIRROR:-vault.centos.org}"
