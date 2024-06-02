@@ -140,10 +140,13 @@ if ( echo $DISTRIB_ID | grep -E -iq "debian|mint|ubuntu" );then
     fi
     if ( echo $DISTRIB_ID | grep -E -iq "mint|ubuntu" ) && ( echo $DISTRIB_RELEASE |grep -E -iq $oldubuntu);then
         OAPTMIRROR="old-releases.ubuntu.com"
-        sed -i -r \
+        # 16.04/14.04 is not yet on old mirrors but are unsupported
+        if (echo $DISTRIB_RELEASE |grep -E -v -iq "14.04|16.04");then
+            sed -i -r \
             -e 's/^(deb.*ubuntu)\/?(.*-(security|backport|updates).*)/#\1\/\2/g' \
             -e 's!'$NAPTMIRROR'!'$OAPTMIRROR'!g' \
             $( find /etc/apt/sources.list* -type f; )
+        fi
     fi
     if (echo $DISTRIB_ID|grep -E -iq debian) && [ -e $pglist ] && [ $DISTRIB_RELEASE -le $PG_DEBIAN_OLDSTABLE ] && [ -e /etc/apt/sources.list.d/pgdg.list ];then
         sed -i -re "s/apt.postgresql/apt-archive.postgresql/g" -e "s/http:/https:/g" /etc/apt/sources.list.d/pgdg.list
