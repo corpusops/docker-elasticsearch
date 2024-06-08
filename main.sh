@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 shopt -s extglob
+export DOCKER_BUILDKIT=${DOCKER_BUILDKIT-1}
+export COMPOSE_DOCKER_CLI_BUILD=${COMPOSE_DOCKER_CLI_BUILD-1}
+export BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS-plain}
 ## refresh from corpsusops.bootstrap/hacking/shell_glue (copy paste until last function)
 readlinkf() {
     if ( uname | grep -E -iq "darwin|bsd" );then
@@ -250,6 +253,7 @@ SKIP_TF="(tensorflow.serving:[0-9].*)"
 SKIP_MINIO="(k8s-operator|((minio|mc):(RELEASE.)?[0-9]{4}-.{7}))"
 SKIP_MAILU="(mailu.*(feat|patch|merg|refactor|revert|upgrade|fix-|pr-template))"
 SKIP_DOCKER="docker(\/|:)([0-9]+\.[0-9]+\.|17|18.0[1-6]|1$|1(\.|-)).*"
+SKIPPED_TAGS="$SKIP_TF|$SKIP_MINOR_OS|$SKIP_NODE|$SKIP_DOCKER|$SKIP_MINIO|$SKIP_MAILU|$SKIP_MINOR|$SKIP_PRE|$SKIP_OS|$SKIP_PHP|$SKIP_WINDOWS|$SKIP_MISC"
 CURRENT_TS=$(date +%s)
 IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(minio|mc))))"
 
@@ -446,7 +450,7 @@ gen_image() {
         local df="$folder/Dockerfile.override"
         if [ -e "$df" ];then dockerfiles="$dockerfiles $df" && break;fi
     done
-    local parts="from args argspost helpers pre base post clean cleanpost extra labels labelspost"
+    local parts="from args argspost helpers pre base post postextra clean clean cleanpost extra labels labelspost"
     for order in $parts;do
         for folder in . .. ../../..;do
             local df="$folder/Dockerfile.$order"
@@ -506,8 +510,15 @@ do_get_namespace_tag() {
             if [ -e $i/version ];then version=$( cat $i/version );break;fi
         done
         echo "$repo/$tag:$version" \
-            | sed -re "s/(-?(server)?-(web-vault|postgresql|mysql)):/-server:\3-/g"
+            | sed -re "s/(-?(server)?-(web-vault|elasticsearch|opensearch|postgresql|mysql|mongo|mongodb|maria|mariadb)):/-server:\3-/g"
     done
+}
+
+
+filter_tags() {
+    for j in $@ ;do for i in $j;do
+        if is_skipped "$n:$i";then debug "Skipped: $n:$i";else printf "$i\n";fi
+    done;done | awk '!seen[$0]++' | sort -V
 }
 
 do_get_image_tags() { get_image_tags "$@"; }
@@ -536,28 +547,50 @@ get_image_tags() {
         printf "$results\n" | xargs -n 1 | sed -e "s/ //g" | sort -V > "$t.raw"
     fi
     # cleanup elastic minor images (keep latest)
-    ONE_MINOR="elasticsearch"
-    if ( echo $t | grep -E -q "$ONE_MINOR" );then
-        atags="$(cat $t.raw)"
-        for ix in $(seq 0 15);do
-            for j in $(seq 0 30);do
-                mv="$(  (( echo "$atags" | grep -E "$ix\.$j\." | grep -v alpine ) || true )|sort -V )"
-                amv="$( (( echo "$atags" | grep -E "$ix\.$j\." | grep    alpine ) || true )|sort -V )"
-                for selected in "$mv" "$amv";do
+    atags="$(filter_tags "$(cat $t.raw)")"
+    changed=
+    if ( echo $t | grep -E -q "$ONLY_ONE_MINOR" );then
+        oomt=""
+        for ix in $(seq 0 30);do
+            if ! ( echo "$atags" | grep -E -q "^$ix\." );then continue;fi
+            for j in $(seq 0 99);do
+                if ! ( echo "$atags" | grep -E -q "^$ix\.${j}\." );then continue;fi
+                for flavor in "" \
+                    alpine alpine3.13 alpine3.14 alpine3.15 alpine3.16 alpine3.5 \
+                    trusty xenial bionic focal jammy \
+                    bullseye stretch buster jessie \
+                    ;do
+                    selected=""
+                    if [[ -z "$flavor" ]];then
+                        selected="$( (( echo "$atags" | grep -E "$ix\.$j\.[0-9]+$" )    || true )|sort -V )"
+                    else
+                        if ! ( echo "$atags" | grep -E -q "$ix\.$j\..*$flavor$" );then continue;fi
+                        for k in $(seq 0 99);do
+                            v=$( (( echo "$atags" | grep -E "$ix\.$j\.${k}.*$flavor$" ) || true )|sort -V )
+                            if [[ -n $v ]];then
+                                if [[ -n $selected ]];then selected="$selected $v";else selected="$v";fi
+                            fi
+                        done
+                    fi
                     if [[ -n "$selected" ]];then
                         for l in $(echo "$selected"|sed -e "$ d");do
-                            SKIPPED_TAGS="$SKIPPED_TAGS|${ONE_MINOR}:$l$"
+                            if [[ -z $oomt ]];then
+                                oomt="$l$"
+                            else
+                                oomt="$oomt|$l"
+                            fi
                         done
                     fi
                 done
             done
+            if [[ -n $oomt ]];then
+                SKIPPED_TAGS="$SKIPPED_TAGS|(($ONLY_ONE_MINOR):($oomt)$)"
+            fi
         done
     fi
     if [[ -z ${SKIP_TAGS_REBUILD} ]];then
-    rm -f "$t"
-    ( for j in $(cat "$t.raw");do for i in $j;do
-        if is_skipped "$n:$i";then debug "Skipped: $n:$i";else printf "$i\n";fi
-      done;done | awk '!seen[$0]++' | sort -V ) >> "$t"
+        rm -f "$t"
+        filter_tags "$atags" > $t
     fi
     set -e
     if [ -e "$t" ];then cat "$t";fi
