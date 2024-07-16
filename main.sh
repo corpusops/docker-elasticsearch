@@ -255,7 +255,7 @@ IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(mini
 
 
 
-SKIP_MINOR_ES="elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|5\.[1-5]\.|1\.[3-7])"
+SKIP_MINOR_ES="elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|1\.[3-7]|1|2.*|5-alpine|5.0|5.1|5.2|5.3|5.4|5.5|5\.[0-5]\..*|6\.[1-10]|7\.[0-10])"
 SKIPPED_TAGS="$SKIP_MINOR_ES"
 
 default_images="
@@ -283,9 +283,6 @@ MAILU_VERSiON=1.7
 
 BATCHED_IMAGES="\
 library/elasticsearch/7.14.2::15
-library/elasticsearch/5\
- library/elasticsearch/1\
- library/elasticsearch/2::7
 "
 SKIP_REFRESH_ANCESTORS=${SKIP_REFRESH_ANCESTORS-}
 
