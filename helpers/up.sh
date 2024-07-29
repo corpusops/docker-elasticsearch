@@ -18,7 +18,7 @@ _cops_SYSTEM=$(system_detect.sh||./system_detect.sh||"$W/system_detect.sh")
 DISTRIB_ID=
 DISTRIB_CODENAME=
 DISTRIB_RELEASE=
-oldubuntu="^(10\.|12\.|13\.|14.10|15\.|16.10|17\.04|17\.10|18\.10|19\.04|19\.10)"
+oldubuntu="^(10\.|12\.|13\.|14\.|15\.|16\.|17\.|18\.10|19\.|20\.10|21\.)"
 # oldubuntu="^(10\.|12\.|13\.|14.10|15\.|16.10|17\.04)"
 NOSOCAT=""
 OAPTMIRROR="${OAPTMIRROR:-}"
@@ -48,6 +48,9 @@ elif [ -e /etc/redhat-release ];then
     DISTRIB_RELEASE=$(echo $(head  /etc/issue)|awk '{print tolower($3)}')
 fi
 DISTRIB_MAJOR="$(echo ${DISTRIB_RELEASE}|sed -re "s/\..*//g")"
+if [ "x${DISTRIB_ID}" = "xcentos" ] && ( echo  "${DISTRIB_MAJOR}" | grep -Eq "^(6|7|8)");then
+    sed -i 's/mirrorlist/#mirrorlist/g;s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+fi
 if ( grep -q amzn /etc/os-release );then
     yuminstall findutils
     if ( amazon-linux-extras help >/dev/null 2>&1 );then
@@ -71,6 +74,7 @@ if [ -e /etc/redhat-release ];then
     fi
 fi
 DEBIAN_OLDSTABLE=8
+PG_DEBIAN_OLDSTABLE=9
 find /etc -name "*.reactivate" | while read f;do
     mv -fv "$f" "$(basename $f .reactivate)"
 done
@@ -127,21 +131,32 @@ if ( echo $DISTRIB_ID | grep -E -iq "debian|mint|ubuntu" );then
         # fix old debian unstable images
         sed -i -re "s!sid(/)?!$DISTRIB_CODENAME\1!" $(find /etc/apt/sources.list* -type f)
         OAPTMIRROR="archive.debian.org"
-        sed -i -r -e '/-updates|security.debian.org/d' \
-            $( find /etc/apt/sources.list* -type f; )
+        sed -i -r -e '/-updates|security.debian.org/d' $( find /etc/apt/sources.list* -type f; )
         if (echo $DISTRIB_ID|grep -E -iq debian) && [ $DISTRIB_RELEASE -eq $DEBIAN_OLDSTABLE ];then
             log "Using debian LTS packages"
             echo "$DEBIAN_LTS_SOURCELIST" >> /etc/apt/sources.list
             rm -rvf /var/lib/apt/*
         fi
     fi
-    if ( echo $DISTRIB_ID | grep -E -iq "mint|ubuntu" ) && \
-        ( echo $DISTRIB_RELEASE |grep -E -iq $oldubuntu);then
+    if ( echo $DISTRIB_ID | grep -E -iq "mint|ubuntu" ) && ( echo $DISTRIB_RELEASE |grep -E -iq $oldubuntu);then
         OAPTMIRROR="old-releases.ubuntu.com"
         sed -i -r \
             -e 's/^(deb.*ubuntu)\/?(.*-(security|backport|updates).*)/#\1\/\2/g' \
             -e 's!'$NAPTMIRROR'!'$OAPTMIRROR'!g' \
             $( find /etc/apt/sources.list* -type f; )
+    fi
+    if (echo $DISTRIB_ID|grep -E -iq debian) && [ -e $pglist ] && [ $DISTRIB_RELEASE -le $PG_DEBIAN_OLDSTABLE ] && [ -e /etc/apt/sources.list.d/pgdg.list ];then
+        sed -i -re "s/apt.postgresql/apt-archive.postgresql/g" -e "s/http:/https:/g" /etc/apt/sources.list.d/pgdg.list
+    fi
+    if ( (echo $DISTRIB_ID|grep -E -iq "mint|ubuntu" ) && ( echo $DISTRIB_RELEASE |grep -E -iq $oldubuntu); ) ||\
+       ( (echo $DISTRIB_ID|grep -E -iq debian) && [ $DISTRIB_RELEASE -le $DEBIAN_OLDSTABLE ]; ) ||\
+       ( (echo $DISTRIB_ID|grep -E -iq debian) && [ -e $pglist ] && [ $DISTRIB_RELEASE -le $PG_DEBIAN_OLDSTABLE ]; );then
+        printf 'Acquire::Check-Valid-Until no;\nAPT{ Get { AllowUnauthenticated "1"; }; };\n\n'>/etc/apt/apt.conf.d/nogpgverif
+        if (dpkg -l|grep -vq apt-transport-https);then sed -i -re "s/^(deb.*https:.*)/#\1 #httpsfix/g" $(find /etc/apt/sources.list* -type f);fi
+        apt-get update || true
+        apt-get install -y ca-certificates apt-transport-https apt bzip2
+        sed -i -re "s/^#(.*)#httpsfix/\1/g" $(find /etc/apt/sources.list* -type f)
+        apt-get update
     fi
 fi
 
@@ -201,7 +216,10 @@ if [ -e /etc/fedora-release ];then
 fi
 if ( echo "$DISTRIB_ID $DISTRIB_RELEASE $DISTRIB_CODENAME" | grep -E -iq alpine );then
     log "Upgrading alpine"
-    apk upgrade --update-cache --available
+    apk update && apk add bash
+    if !(apk upgrade --update-cache --available);then
+        apk upgrade --update-cache && apk upgrade --update-cache --available
+    fi
 fi
 ./bin/fix_letsencrypt.sh
 export FORCE_INSTALL=y
@@ -214,6 +232,5 @@ if ! ( echo foo|envsubst >/dev/null 2>&1);then
         echo "envsubst is missing"
     fi
 fi
-find /etc/rsyslog.d -name "*.conf" -not -type d \
-    | while read f;do mv -vf "$f" "$f.sample";done
+find /etc/rsyslog.d -name "*.conf" -not -type d |while read f;do mv -vf "$f" "$f.sample";done
 # vim:set et sts=4 ts=4 tw=0:
