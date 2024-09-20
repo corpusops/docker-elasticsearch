@@ -260,22 +260,16 @@ SKIPPED_TAGS="$SKIP_TF|$SKIP_MINOR_OS|$SKIP_NODE|$SKIP_DOCKER|$SKIP_MINIO|$SKIP_
 CURRENT_TS=$(date +%s)
 IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(minio|mc))))"
 
-ES_SKIPPED_TAGS="alpine|elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|1\.[3-7]|1|2.*|5-alpine|5.0|5.1|5.2|5.3|5.4|5.5)"
-ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|8.10.4$|8.11.4$|8.12.2$|8.13.4$|8.14.3$|8.9.2$|8.0.1$|8.10.3$|8.11.3$|8.12.1$|8.1.3$|8.13.3$|8.14.2$|8.2.3$|8.3.3$|8.4.3$|8.5.3$|8.6.2$|8.7.1$|8.8.2$|8.9.1$"
-ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|7.0.0$|7.0.1$|7.1.0$|7.10.1$|7.1.1$|7.11.1$|7.11.2$|7.12.0$|7.12.1$|7.13.0$|7.13.1$|7.13.2$|7.13.3$|7.13.4$|7.14.0$|7.14.1$|7.16.1$|7.16.2$|7.16.3$|7.17.0$|7.17.1$|7.17.10$|7.17.11$|7.17.12$|7.17.13$|7.17.14$|7.17.15$|7.17.16$|7.17.17$|7.17.18$|7.17.19$|7.17.2$|7.17.20$|7.17.21$|7.17.22$|7.17.23$|7.17.3$|7.17.4$|7.17.5$|7.17.6$|7.17.7$|7.17.8$|7.17.9$"
-ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.10-alpine$|5.6.10$|5.6.11-alpine$|5.6.11$|5.6.12-alpine$|5.6.12$|5.6.13-alpine$|5.6.13$|5.6.14-alpine$|5.6.14$|5.6.3$|5.6.4$|5.6.5$|5.6.6$|5.6.7$|5.6.8$|5.6.9$|6.4.0$|6.4.1$|6.5.0$|6.5.1$|6.5.2$|6.6.0$|6.7.0$|6.8.0$|6.8.1$|6.8.10$|6.8.11$|6.8.12$|6.8.13$|6.8.14$|6.8.15$|6.8.16$|6.8.17$|6.8.18$|6.8.19$|6.8.2$|6.8.20$|6.8.21$|6.8.22$|6.8.3$|6.8.4$|6.8.5$|6.8.6$|6.8.7$|6.8.8$|6.8.9$|7.3.0$|7.4.0$|7.5.0$|7.6.0$|7.9.0$|7.9.1$|7.9.2$|8.1.0$|8.11.0$|8.2.0$|8.4.0$|8.5.0$"
-ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.15$|5.6.15-alpine$|5.6-alpine$|6.4.2$|6.5.3$|6.6.1$|6.7.1$|7.2.0$|7.3.1$|7.4.1$|7.5.1$|7.6.1$|7.7.0$|7.8.0$|7.9.3$|8.10.1$|8.1.1$|8.11.1$|8.14.0$|8.15.0$|8.2.1$|8.3.1$|8.4.1$|8.5.1$|8.6.0$|8.8.0$"
-ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.16$|5.6.16-alpine$|6.4.3$|6.5.4$|6.6.2$|6.7.2$|7.2.1$|7.3.2$|7.4.2$|7.5.2$|7.6.2$|7.7.1$|7.8.1$|8.0.0$|8.1.2$|8.2.2$|8.3.2$|8.4.2$|8.5.2$|8.6.1$|8.7.0$|8.8.1$|8.9.0$|8.10.2$|8.11.2$|8.12.0$|8.13.0$|8.14.1$"
+ES_SKIPPED_TAGS="elasticsearch:(.*alpine.*|0|1|2|3|4|5\.[0-5]|[0-9+]\.[0-9]+\.[0-9]+.*)"
+ES_PROTECTED_VERSIONS="elasticsearch:(5|5.6|6.8.23|7.14.2|7.17.24|8.15.1)$"
 SKIPPED_TAGS="$ES_SKIPPED_TAGS"
-#6.8.23
-#7.17.24
-#8.15.1
+PROTECTED_VERSIONS="$ES_PROTECTED_VERSIONS"
 
 default_images="
 library/elasticsearch
 "
 
-ONLY_ONE_MINOR="postgres|nginx|opensearch"
+ONLY_ONE_MINOR="postgres|nginx|opensearch|elasticsearch"
 PROTECTED_TAGS="corpusops/rsyslog"
 find_top_node_() {
     img=library/node
@@ -496,6 +490,10 @@ gen_image() {
 is_skipped() {
     local ret=1 t="$@"
     if [[ -z $SKIPPED_TAGS ]];then return 1;fi
+    if [[ -n "${PROTECTED_VERSIONS}" ]] && ( echo "$t" | grep -E -q "$PROTECTED_VERSIONS" );then
+        debug "$t is protected, no skip"
+        return 1
+    fi
     if ( echo "$t" | grep -E -q "$SKIPPED_TAGS" );then
         ret=0
     fi
@@ -572,7 +570,7 @@ get_image_tags() {
     changed=
     if [[ "x${ONLY_ONE_MINOR}" != "x" ]] && ( echo $n | grep -E -q "$ONLY_ONE_MINOR" );then
         oomt=""
-        for ix in $(seq 0 30);do
+        for ix in $(seq 0 99);do
             if ! ( echo "$atags" | grep -E -q "^$ix\." );then continue;fi
             for j in $(seq 0 99);do
                 if ! ( echo "$atags" | grep -E -q "^$ix\.${j}\." );then continue;fi
@@ -595,10 +593,12 @@ get_image_tags() {
                     fi
                     if [[ -n "$selected" ]];then
                         for l in $(echo "$selected"|sed -e "$ d");do
-                            if [[ -z $oomt ]];then
-                                oomt="$l$"
-                            else
-                                oomt="$oomt|$l"
+                            if [[ -z "${PROTECTED_VERSIONS}" ]] || ! ( echo "$n:$l" | grep "${PROTECTED_VERSIONS}" );then
+                                if [[ -z $oomt ]];then
+                                    oomt="$l$"
+                                else
+                                    oomt="$oomt|$l"
+                                fi
                             fi
                         done
                     fi
@@ -611,7 +611,7 @@ get_image_tags() {
     fi
     if [[ -z ${SKIP_TAGS_REBUILD} ]];then
         rm -f "$t"
-        filter_tags "$atags" > $t
+        filter_tags "$atags" > "$t"
     fi
     set -e
     if [ -e "$t" ];then cat "$t";fi
