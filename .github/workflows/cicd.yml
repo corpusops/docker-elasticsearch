@@ -65,23 +65,15 @@ jobs:
       fail-fast: false
       matrix:
         IMAGES:
+        - "library/elasticsearch/5 library/elasticsearch/5.6"
+        - "library/elasticsearch/6.8.23"
+        - "library/elasticsearch/7.14.2 library/elasticsearch/7.17.24"
+        - "library/elasticsearch/8.15.1"
         #- "corpusops/test/a corpusops/test/b corpusops/test/c"
         # all images that werent explicitly told to be built would be built in the next batches
         # we span them onto N jobs
-        - "zleftover:1/14"
-        - "zleftover:2/14"
-        - "zleftover:3/14"
-        - "zleftover:4/14"
-        - "zleftover:5/14"
-        - "zleftover:6/14"
-        - "zleftover:7/14"
-        - "zleftover:8/14"
-        - "zleftover:9/14"
-        - "zleftover:10/14"
-        - "zleftover:11/14"
-        - "zleftover:12/14"
-        - "zleftover:13/14"
-        - "zleftover:14/14"
+        - "zleftover:1/2"
+        - "zleftover:2/2"
 on:
   push:
   workflow_dispatch:
