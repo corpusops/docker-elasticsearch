@@ -260,7 +260,7 @@ SKIPPED_TAGS="$SKIP_TF|$SKIP_MINOR_OS|$SKIP_NODE|$SKIP_DOCKER|$SKIP_MINIO|$SKIP_
 CURRENT_TS=$(date +%s)
 IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(minio|mc))))"
 
-ES_SKIPPED_TAGS="elasticsearch:(.*alpine.*|0|1|2|3|4|5\.[0-5]|[0-9+]\.[0-9]+\.[0-9]+.*)"
+ES_SKIPPED_TAGS="elasticsearch:(latest|.*alpine.*|0|1|2|3|4|5\.[0-5]|[0-9+]\.[0-9]+\.[0-9]+.*)"
 ES_PROTECTED_VERSIONS="elasticsearch:(5|5.6|6.8.23|7.14.2|7.17.24|8.15.1)$"
 SKIPPED_TAGS="$ES_SKIPPED_TAGS"
 PROTECTED_VERSIONS="$ES_PROTECTED_VERSIONS"
@@ -268,7 +268,6 @@ PROTECTED_VERSIONS="$ES_PROTECTED_VERSIONS"
 default_images="
 library/elasticsearch
 "
-
 ONLY_ONE_MINOR="postgres|nginx|opensearch|elasticsearch"
 PROTECTED_TAGS="corpusops/rsyslog"
 find_top_node_() {
