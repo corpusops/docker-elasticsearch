@@ -71,6 +71,6 @@ jobs:
         - "zleftover:1/2"
         - "zleftover:2/2"
 on:
-  push:
-  workflow_dispatch:
-  schedule: [{cron: '1 0 4,6,8,18,20,22 * *'}]
+  # push:
+  # workflow_dispatch:
+  # schedule: [{cron: '1 0 4,6,8,18,20,22 * *'}]
