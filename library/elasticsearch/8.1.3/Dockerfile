@@ -1,4 +1,4 @@
-FROM library/elasticsearch:8.1.3
+FROM library/elasticsearch:8.1.3 AS final
 ARG DO_UPDATE=y
 ARG NONINTERACTIVE=y
 ARG DEBIAN_FRONTEND=noninteractive

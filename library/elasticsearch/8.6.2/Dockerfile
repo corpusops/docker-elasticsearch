@@ -1,4 +1,4 @@
-FROM library/elasticsearch:6.5.4 AS final
+FROM library/elasticsearch:8.6.2 AS final
 ARG DO_UPDATE=y
 ARG NONINTERACTIVE=y
 ARG DEBIAN_FRONTEND=noninteractive
@@ -96,3 +96,4 @@ RUN sh -c 'set -ex \
     && ./common_clean.sh \
     && cd / && rm -rf /tmp/corpusopssteroids /var/cache/apk/* /var/lib/apt/lists/*'
 LABEL com.github.corpusops.docker-images-commit="$DOCKER_IMAGES_COMMIT"
+USER elasticsearch:root
