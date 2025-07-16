@@ -26,6 +26,10 @@ NORMAL="\\e[0;0m"
 NO_COLOR=${NO_COLORS-${NO_COLORS-${NOCOLOR-${NOCOLORS-}}}}
 LOGGER_NAME=${LOGGER_NAME:-corpusops_build}
 ERROR_MSG="There were errors"
+ver_ge() { [  "$2" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]; }
+ver_gt() { [ "$1" = "$2" ] && return 1 || ver_ge $1 $2; }
+ver_le() { [  "$1" = "`echo -e "$1\n$2" | sort -V | head -n1`" ]; }
+ver_lt() { [ "$1" = "$2" ] && return 1 || ver_le $1 $2; }
 uniquify_string() {
     local pattern=$1
     shift
@@ -238,7 +242,6 @@ SKIP_OS="$SKIP_OS|((debian|redis):[0-9]+\.[0-9]+.*)"
 SKIP_OS="$SKIP_OS|(centos:.\..\.....|centos.\..\.....)"
 SKIP_OS="$SKIP_OS|(alpine:.\.[0-9]+\.[0-9]+)"
 SKIP_OS="$SKIP_OS|(debian:(6.*|squeeze))"
-SKIP_OS="$SKIP_OS|(ubuntu:(([0-9][0-9]\.[0-9][0-9]\..*)|(14.10|12|10|11|13|15)))"
 SKIP_OS="$SKIP_OS|(lucid|maverick|natty|precise|quantal|raring|saucy)"
 SKIP_OS="$SKIP_OS|(centos:(centos)?5)"
 SKIP_OS="$SKIP_OS|(fedora.*(modular|21))"
@@ -253,17 +256,26 @@ SKIP_TF="(tensorflow.serving:[0-9].*)"
 SKIP_MINIO="(k8s-operator|((minio|mc):(RELEASE.)?[0-9]{4}-.{7}))"
 SKIP_MAILU="(mailu.*(feat|patch|merg|refactor|revert|upgrade|fix-|pr-template))"
 SKIP_DOCKER="docker(\/|:)([0-9]+\.[0-9]+\.|17|18.0[1-6]|1$|1(\.|-)).*"
+SKIPPED_TAGS="$SKIP_TF|$SKIP_MINOR_OS|$SKIP_NODE|$SKIP_DOCKER|$SKIP_MINIO|$SKIP_MAILU|$SKIP_MINOR|$SKIP_PRE|$SKIP_OS|$SKIP_PHP|$SKIP_WINDOWS|$SKIP_MISC"
 CURRENT_TS=$(date +%s)
 IMAGES_SKIP_NS="((mailhog|postgis|pgrouting(-bare)?|^library|dejavu|(minio/(minio|mc))))"
 
-
-ES_SKIPPED_TAGS="elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|1\.[3-7]|1|2.*|5-alpine|5.0|5.1|5.2|5.3|5.4|5.5|5\.[0-5]\..*|6\.[1-10]|7\.[0-10])"
+ES_SKIPPED_TAGS="alpine|elasticsearch:(([0-4]\.?){3}(-32bit.*)?|2\.[0-3]\.|1\.[3-7]|1|2.*|5-alpine|5.0|5.1|5.2|5.3|5.4|5.5)"
+ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|8.10.4$|8.11.4$|8.12.2$|8.13.4$|8.14.3$|8.9.2$|8.0.1$|8.10.3$|8.11.3$|8.12.1$|8.1.3$|8.13.3$|8.14.2$|8.2.3$|8.3.3$|8.4.3$|8.5.3$|8.6.2$|8.7.1$|8.8.2$|8.9.1$"
+ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|7.0.0$|7.0.1$|7.1.0$|7.10.1$|7.1.1$|7.11.1$|7.11.2$|7.12.0$|7.12.1$|7.13.0$|7.13.1$|7.13.2$|7.13.3$|7.13.4$|7.14.0$|7.14.1$|7.16.1$|7.16.2$|7.16.3$|7.17.0$|7.17.1$|7.17.10$|7.17.11$|7.17.12$|7.17.13$|7.17.14$|7.17.15$|7.17.16$|7.17.17$|7.17.18$|7.17.19$|7.17.2$|7.17.20$|7.17.21$|7.17.22$|7.17.23$|7.17.3$|7.17.4$|7.17.5$|7.17.6$|7.17.7$|7.17.8$|7.17.9$"
+ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.10-alpine$|5.6.10$|5.6.11-alpine$|5.6.11$|5.6.12-alpine$|5.6.12$|5.6.13-alpine$|5.6.13$|5.6.14-alpine$|5.6.14$|5.6.3$|5.6.4$|5.6.5$|5.6.6$|5.6.7$|5.6.8$|5.6.9$|6.4.0$|6.4.1$|6.5.0$|6.5.1$|6.5.2$|6.6.0$|6.7.0$|6.8.0$|6.8.1$|6.8.10$|6.8.11$|6.8.12$|6.8.13$|6.8.14$|6.8.15$|6.8.16$|6.8.17$|6.8.18$|6.8.19$|6.8.2$|6.8.20$|6.8.21$|6.8.22$|6.8.3$|6.8.4$|6.8.5$|6.8.6$|6.8.7$|6.8.8$|6.8.9$|7.3.0$|7.4.0$|7.5.0$|7.6.0$|7.9.0$|7.9.1$|7.9.2$|8.1.0$|8.11.0$|8.2.0$|8.4.0$|8.5.0$"
+ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.15$|5.6.15-alpine$|5.6-alpine$|6.4.2$|6.5.3$|6.6.1$|6.7.1$|7.2.0$|7.3.1$|7.4.1$|7.5.1$|7.6.1$|7.7.0$|7.8.0$|7.9.3$|8.10.1$|8.1.1$|8.11.1$|8.14.0$|8.15.0$|8.2.1$|8.3.1$|8.4.1$|8.5.1$|8.6.0$|8.8.0$"
+ES_SKIPPED_TAGS="$ES_SKIPPED_TAGS|5.6.16$|5.6.16-alpine$|6.4.3$|6.5.4$|6.6.2$|6.7.2$|7.2.1$|7.3.2$|7.4.2$|7.5.2$|7.6.2$|7.7.1$|7.8.1$|8.0.0$|8.1.2$|8.2.2$|8.3.2$|8.4.2$|8.5.2$|8.6.1$|8.7.0$|8.8.1$|8.9.0$|8.10.2$|8.11.2$|8.12.0$|8.13.0$|8.14.1$"
 SKIPPED_TAGS="$ES_SKIPPED_TAGS"
+#6.8.23
+#7.17.24
+#8.15.1
 
 default_images="
 library/elasticsearch
 "
-ONLY_ONE_MINOR="postgres|elasticsearch|nginx|opensearch"
+
+ONLY_ONE_MINOR="postgres|nginx|opensearch"
 PROTECTED_TAGS="corpusops/rsyslog"
 find_top_node_() {
     img=library/node
@@ -285,7 +297,12 @@ NODE_TOP="$(echo $(find_top_node))"
 MAILU_VERSiON=1.7
 
 BATCHED_IMAGES="\
-library/elasticsearch/7.14.2::15
+library/elasticsearch/5\
+ library/elasticsearch/5.6::30
+library/elasticsearch/6.8.23::30
+library/elasticsearch/7.14.2\
+ library/elasticsearch/7.17.24::30
+library/elasticsearch/8.15.1::30
 "
 SKIP_REFRESH_ANCESTORS=${SKIP_REFRESH_ANCESTORS-}
 
@@ -449,7 +466,11 @@ gen_image() {
         local df="$folder/Dockerfile.override"
         if [ -e "$df" ];then dockerfiles="$dockerfiles $df" && break;fi
     done
-    local parts="from args argspost helpers pre base post postextra clean clean cleanpost extra labels labelspost"
+    local parts=""
+    for partsstep in squashpre from args argspost helpers pre base post postextra clean cleanpost predosquash squash squashpreexec squashexec postdosquash extra labels labelspost;do
+        parts="$parts pre_${partsstep} ${partsstep} post_${partsstep}"
+    done
+    parts=$(echo "$parts"|xargs)
     for order in $parts;do
         for folder in . .. ../../..;do
             local df="$folder/Dockerfile.$order"
@@ -515,7 +536,6 @@ do_get_namespace_tag() {
     done
 }
 
-
 filter_tags() {
     for j in $@ ;do for i in $j;do
         if is_skipped "$n:$i";then debug "Skipped: $n:$i";else printf "$i\n";fi
@@ -550,7 +570,7 @@ get_image_tags() {
     # cleanup elastic minor images (keep latest)
     atags="$(filter_tags "$(cat $t.raw)")"
     changed=
-    if ( echo $t | grep -E -q "$ONLY_ONE_MINOR" );then
+    if [[ "x${ONLY_ONE_MINOR}" != "x" ]] && ( echo $n | grep -E -q "$ONLY_ONE_MINOR" );then
         oomt=""
         for ix in $(seq 0 30);do
             if ! ( echo "$atags" | grep -E -q "^$ix\." );then continue;fi
@@ -558,8 +578,8 @@ get_image_tags() {
                 if ! ( echo "$atags" | grep -E -q "^$ix\.${j}\." );then continue;fi
                 for flavor in "" \
                     alpine alpine3.13 alpine3.14 alpine3.15 alpine3.16 alpine3.5 \
-                    trusty xenial bionic focal jammy \
-                    bullseye stretch buster jessie \
+                    trusty xenial bionic focal jammy noble \
+                    bookworm bullseye stretch buster jessie \
                     ;do
                     selected=""
                     if [[ -z "$flavor" ]];then
@@ -674,20 +694,20 @@ is_same_commit_label() {
     return $ret
 }
 
-get_docker_squash_args() {
-    DOCKER_DO_SQUASH=${DOCKER_DO_SQUASH-init}
-    if ! ( echo "${NO_SQUASH-}"|grep -E -q "^(no)?$" );then
-        DOCKER_DO_SQUASH=""
-        log "no squash"
-    elif [[ "$DOCKER_DO_SQUASH" = init ]];then
-        DOCKER_DO_SQUASH="--squash"
-        if ! (printf "FROM alpine\nRUN touch foo\n" | docker build --squash - >/dev/null 2>&1 );then
-            DOCKER_DO_SQUASH=
-            log "docker squash isnt not supported"
-        fi
-    fi
-    echo $DOCKER_DO_SQUASH
-}
+#get_docker_squash_args() {
+#    DOCKER_DO_SQUASH=${DOCKER_DO_SQUASH-init}
+#    if ! ( echo "${NO_SQUASH-}"|grep -E -q "^(no)?$" );then
+#        DOCKER_DO_SQUASH=""
+#        log "no squash"
+#    elif [[ "$DOCKER_DO_SQUASH" = init ]];then
+#        DOCKER_DO_SQUASH="--squash"
+#        if ! (printf "FROM alpine\nRUN touch foo\n" | docker build --squash - >/dev/null 2>&1 );then
+#            DOCKER_DO_SQUASH=
+#            log "docker squash isnt not supported"
+#        fi
+#    fi
+#    echo $DOCKER_DO_SQUASH
+#}
 
 record_build_image() {
     # library/ubuntu/latest / corpusops/postgis/latest
@@ -703,7 +723,7 @@ record_build_image() {
         log "Image $itag is update to date, skipping build"
         return
     fi
-    dargs="${DOCKER_BUILD_ARGS-} $(get_docker_squash_args)"
+    dargs="${DOCKER_BUILD_ARGS-}"
     local dbuild="cat $image/$df|docker build ${dargs-}  -t $itag . -f - --build-arg=DOCKER_IMAGES_COMMIT=$git_commit"
     local retries=${DOCKER_BUILD_RETRIES:-2}
     local cmd="dret=8 && for i in \$(seq $retries);do if ($dbuild);then dret=0;break;else dret=6;fi;done"
